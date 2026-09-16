@@ -3,20 +3,29 @@ package Swan.square_games_api;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import java.util.Collection;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/games")
 public class GameCatalogController {
 
-    private final GameCatalog gameCatalog;
+    private final List<GamePlugin> plugins;
 
-    public GameCatalogController(GameCatalog gameCatalog) {
-        this.gameCatalog = gameCatalog;
+    public GameCatalogController(List<GamePlugin> plugins) {
+        this.plugins = plugins;
     }
 
     @GetMapping
-    public Collection<String> getAvailableGames() {
-        return gameCatalog.getAvailableGameIds();
+    public List<Map<String, String>> getAvailableGames(Locale locale) {
+
+        return plugins.stream()
+                .map(plugin -> Map.of(
+                        "id", plugin.getId(),
+                        "name", plugin.getName(locale)
+                ))
+                .toList();
     }
 }
