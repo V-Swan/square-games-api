@@ -7,7 +7,6 @@ import fr.le_campus_numerique.square_games.engine.InvalidPositionException;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -17,16 +16,20 @@ import java.util.stream.Collectors;
 public class GameServiceImpl implements GameService {
 
     private final Map<String, GamePlugin> pluginsMap;
-    private final Map<UUID, Game> games = new HashMap<>();
+    private final GameDao gameDao;
 
-    public GameServiceImpl(List<GamePlugin> plugins) {
+    public GameServiceImpl(
+            List<GamePlugin> plugins,
+            GameDao gameDao
+    ) {
         this.pluginsMap = plugins.stream()
                 .collect(Collectors.toMap(
                         GamePlugin::getId,
                         plugin -> plugin
                 ));
-    }
 
+        this.gameDao = gameDao;
+    }
     @Override
     public Game createGame(
             String gameType,
@@ -49,14 +52,15 @@ public class GameServiceImpl implements GameService {
             game = plugin.createGame(playerCount, boardSize);
         }
 
-        games.put(game.getId(), game);
+        gameDao.upsert(game);
 
         return game;
     }
 
     @Override
     public Game getGame(UUID gameId) {
-        return games.get(gameId);
+        return gameDao.findById(gameId.toString())
+                .orElse(null);
     }
 
     @Override
@@ -64,7 +68,8 @@ public class GameServiceImpl implements GameService {
             UUID gameId,
             String tokenName
     ) {
-        Game game = games.get(gameId);
+        Game game = gameDao.findById(gameId.toString())
+                .orElse(null);
 
         if (game == null) {
             throw new IllegalArgumentException(
@@ -99,7 +104,8 @@ public class GameServiceImpl implements GameService {
             UUID gameId,
             MoveParams moveParams
     ) {
-        Game game = games.get(gameId);
+        Game game = gameDao.findById(gameId.toString())
+                .orElse(null);
 
         if (game == null) {
             throw new IllegalArgumentException(
