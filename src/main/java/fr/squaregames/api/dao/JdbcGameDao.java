@@ -1,4 +1,4 @@
-package Swan.square_games_api;
+package fr.squaregames.api.dao;
 
 import fr.le_campus_numerique.square_games.engine.*;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;

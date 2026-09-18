@@ -1,4 +1,4 @@
-package Swan.square_games_api;
+package fr.squaregames.api;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

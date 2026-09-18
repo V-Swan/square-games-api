@@ -1,4 +1,4 @@
-package Swan.square_games_api;
+package fr.squaregames.api.service;
 
 import java.util.Collection;
 

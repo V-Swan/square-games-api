@@ -1,9 +1,12 @@
-package Swan.square_games_api;
+package fr.squaregames.api.service;
 
 import fr.le_campus_numerique.square_games.engine.CellPosition;
 import fr.le_campus_numerique.square_games.engine.Game;
 import fr.le_campus_numerique.square_games.engine.Token;
 import fr.le_campus_numerique.square_games.engine.InvalidPositionException;
+import fr.squaregames.api.dao.GameDao;
+import fr.squaregames.api.plugin.GamePlugin;
+import fr.squaregames.api.dto.MoveParams;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;

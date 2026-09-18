@@ -1,4 +1,4 @@
-package Swan.square_games_api;
+package fr.squaregames.api.configuration;
 
 import fr.le_campus_numerique.square_games.engine.connectfour.ConnectFourGameFactory;
 import fr.le_campus_numerique.square_games.engine.taquin.TaquinGameFactory;

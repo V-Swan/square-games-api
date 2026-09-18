@@ -1,4 +1,4 @@
-package Swan.square_games_api;
+package fr.squaregames.api.service;
 
 import fr.le_campus_numerique.square_games.engine.tictactoe.TicTacToeGameFactory;
 import org.springframework.stereotype.Component;

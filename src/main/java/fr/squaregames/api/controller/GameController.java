@@ -1,7 +1,10 @@
-package Swan.square_games_api;
+package fr.squaregames.api.controller;
 
 import fr.le_campus_numerique.square_games.engine.CellPosition;
 import fr.le_campus_numerique.square_games.engine.Game;
+import fr.squaregames.api.dto.GameCreationParams;
+import fr.squaregames.api.service.GameService;
+import fr.squaregames.api.dto.MoveParams;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

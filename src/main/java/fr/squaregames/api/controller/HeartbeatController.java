@@ -1,5 +1,6 @@
-package Swan.square_games_api;
+package fr.squaregames.api.controller;
 
+import fr.squaregames.api.heartbeat.HeartbeatSensor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;

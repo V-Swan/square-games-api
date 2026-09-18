@@ -1,7 +1,8 @@
-package Swan.square_games_api;
+package fr.squaregames.api.service;
 
 import fr.le_campus_numerique.square_games.engine.CellPosition;
 import fr.le_campus_numerique.square_games.engine.Game;
+import fr.squaregames.api.dto.MoveParams;
 
 import java.util.Collection;
 import java.util.UUID;

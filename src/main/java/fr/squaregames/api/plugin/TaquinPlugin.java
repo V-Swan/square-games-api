@@ -1,37 +1,37 @@
-package Swan.square_games_api;
+package fr.squaregames.api.plugin;
 
 import fr.le_campus_numerique.square_games.engine.Game;
-import fr.le_campus_numerique.square_games.engine.connectfour.ConnectFourGameFactory;
+import fr.le_campus_numerique.square_games.engine.taquin.TaquinGameFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Component;
-
 import java.util.Locale;
-@Component
-public class ConnectFourPlugin implements GamePlugin {
 
-    @Value("${game.connectfour.default-player-count:2}")
+@Component
+public class TaquinPlugin implements GamePlugin {
+
+    @Value("${game.taquin.default-player-count:1}")
     private int defaultPlayerCount;
 
-    @Value("${game.connectfour.default-board-size:7}")
+    @Value("${game.taquin.default-board-size:4}")
     private int defaultBoardSize;
 
     private final MessageSource messageSource;
-    private final ConnectFourGameFactory factory;
+    private final TaquinGameFactory factory;
 
-    public ConnectFourPlugin(MessageSource messageSource, ConnectFourGameFactory factory) {
+    public TaquinPlugin(MessageSource messageSource, TaquinGameFactory factory) {
         this.messageSource = messageSource;
         this.factory = factory;
     }
 
     @Override
     public String getId() {
-        return "connectfour";
+        return "taquin";
     }
 
     @Override
     public String getName(Locale locale) {
-        return messageSource.getMessage("game.connectfour.name", null, locale);
+        return messageSource.getMessage("game.taquin.name", null, locale);
     }
 
     @Override
