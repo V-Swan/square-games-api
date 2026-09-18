@@ -12,6 +12,10 @@ public interface GameService {
 
     Game getGame(UUID gameId);
 
+    Collection<Game> getAllGames();
+
+    void deleteGame(UUID gameId);
+
     Collection<CellPosition> getPossibleMoves(
             UUID gameId,
             String tokenName
@@ -21,4 +25,5 @@ public interface GameService {
             UUID gameId,
             MoveParams moveParams
     );
+
 }

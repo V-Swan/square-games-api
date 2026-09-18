@@ -34,6 +34,14 @@ public class GameController {
                 .body(game);
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<Collection<Game>> getAllGames() {
+
+        Collection<Game> games = gameService.getAllGames();
+
+        return ResponseEntity.ok(games);
+    }
+
     @GetMapping("/{gameId}")
     public ResponseEntity<Game> getGameState(
             @PathVariable UUID gameId) {
@@ -69,5 +77,20 @@ public class GameController {
         );
 
         return ResponseEntity.ok(game);
+    }
+
+    @DeleteMapping("/{gameId}")
+    public ResponseEntity<Void> deleteGame(
+            @PathVariable UUID gameId) {
+
+        Game game = gameService.getGame(gameId);
+
+        if (game == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        gameService.deleteGame(gameId);
+
+        return ResponseEntity.noContent().build();
     }
 }

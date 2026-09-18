@@ -1,14 +1,13 @@
 package Swan.square_games_api;
 
 import fr.le_campus_numerique.square_games.engine.Game;
-import org.springframework.stereotype.Repository;
+
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-@Repository
 public class InMemoryGameDao implements GameDao {
 
     private final Map<String, Game> games = new HashMap<>();

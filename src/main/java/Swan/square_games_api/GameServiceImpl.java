@@ -30,6 +30,7 @@ public class GameServiceImpl implements GameService {
 
         this.gameDao = gameDao;
     }
+
     @Override
     public Game createGame(
             String gameType,
@@ -179,6 +180,17 @@ public class GameServiceImpl implements GameService {
             );
         }
 
+        gameDao.upsert(game);
+
         return game;
+    }
+    @Override
+    public Collection<Game> getAllGames() {
+        return gameDao.findAll().toList();
+    }
+
+    @Override
+    public void deleteGame(UUID gameId) {
+        gameDao.delete(gameId.toString());
     }
 }
