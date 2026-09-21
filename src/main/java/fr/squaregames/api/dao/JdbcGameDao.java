@@ -3,7 +3,6 @@ package fr.squaregames.api.dao;
 import fr.le_campus_numerique.square_games.engine.*;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -14,7 +13,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@Repository
 public class JdbcGameDao implements GameDao {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -37,9 +35,9 @@ public class JdbcGameDao implements GameDao {
     public Stream<Game> findAll() {
 
         String sql = """
-        SELECT id
-        FROM games
-        """;
+                SELECT id
+                FROM games
+                """;
 
         return jdbcTemplate.queryForList(
                         sql,
@@ -243,26 +241,26 @@ public class JdbcGameDao implements GameDao {
         // ---------------------------------------------------------
 
         String gameSql = """
-            INSERT INTO games (
-                id,
-                factory_id,
-                status,
-                current_player_id,
-                board_size
-            )
-            VALUES (
-                :id,
-                :factoryId,
-                :status,
-                :currentPlayerId,
-                :boardSize
-            )
-            ON CONFLICT (id) DO UPDATE SET
-                factory_id = EXCLUDED.factory_id,
-                status = EXCLUDED.status,
-                current_player_id = EXCLUDED.current_player_id,
-                board_size = EXCLUDED.board_size
-            """;
+                INSERT INTO games (
+                    id,
+                    factory_id,
+                    status,
+                    current_player_id,
+                    board_size
+                )
+                VALUES (
+                    :id,
+                    :factoryId,
+                    :status,
+                    :currentPlayerId,
+                    :boardSize
+                )
+                ON CONFLICT (id) DO UPDATE SET
+                    factory_id = EXCLUDED.factory_id,
+                    status = EXCLUDED.status,
+                    current_player_id = EXCLUDED.current_player_id,
+                    board_size = EXCLUDED.board_size
+                """;
 
         MapSqlParameterSource gameParams =
                 new MapSqlParameterSource()
@@ -283,9 +281,9 @@ public class JdbcGameDao implements GameDao {
         // ---------------------------------------------------------
 
         String deletePlayersSql = """
-            DELETE FROM game_players
-            WHERE game_id = :gameId
-            """;
+                DELETE FROM game_players
+                WHERE game_id = :gameId
+                """;
 
         jdbcTemplate.update(
                 deletePlayersSql,
@@ -298,17 +296,17 @@ public class JdbcGameDao implements GameDao {
         // ---------------------------------------------------------
 
         String playerSql = """
-            INSERT INTO game_players (
-                game_id,
-                player_id,
-                player_order
-            )
-            VALUES (
-                :gameId,
-                :playerId,
-                :playerOrder
-            )
-            """;
+                INSERT INTO game_players (
+                    game_id,
+                    player_id,
+                    player_order
+                )
+                VALUES (
+                    :gameId,
+                    :playerId,
+                    :playerOrder
+                )
+                """;
 
         int playerOrder = 0;
 
@@ -331,9 +329,9 @@ public class JdbcGameDao implements GameDao {
         // ---------------------------------------------------------
 
         String deleteTokensSql = """
-            DELETE FROM game_tokens
-            WHERE game_id = :gameId
-            """;
+                DELETE FROM game_tokens
+                WHERE game_id = :gameId
+                """;
 
         jdbcTemplate.update(
                 deleteTokensSql,
@@ -346,23 +344,23 @@ public class JdbcGameDao implements GameDao {
         // ---------------------------------------------------------
 
         String tokenSql = """
-            INSERT INTO game_tokens (
-                game_id,
-                player_id,
-                token_name,
-                position_x,
-                position_y,
-                removed
-            )
-            VALUES (
-                :gameId,
-                :playerId,
-                :tokenName,
-                :positionX,
-                :positionY,
-                :removed
-            )
-            """;
+                INSERT INTO game_tokens (
+                    game_id,
+                    player_id,
+                    token_name,
+                    position_x,
+                    position_y,
+                    removed
+                )
+                VALUES (
+                    :gameId,
+                    :playerId,
+                    :tokenName,
+                    :positionX,
+                    :positionY,
+                    :removed
+                )
+                """;
 
 
         // ---------------------------------------------------------
@@ -450,25 +448,25 @@ public class JdbcGameDao implements GameDao {
 
         jdbcTemplate.update(
                 """
-                DELETE FROM game_tokens
-                WHERE game_id = :gameId
-                """,
+                        DELETE FROM game_tokens
+                        WHERE game_id = :gameId
+                        """,
                 Map.of("gameId", uuid)
         );
 
         jdbcTemplate.update(
                 """
-                DELETE FROM game_players
-                WHERE game_id = :gameId
-                """,
+                        DELETE FROM game_players
+                        WHERE game_id = :gameId
+                        """,
                 Map.of("gameId", uuid)
         );
 
         jdbcTemplate.update(
                 """
-                DELETE FROM games
-                WHERE id = :gameId
-                """,
+                        DELETE FROM games
+                        WHERE id = :gameId
+                        """,
                 Map.of("gameId", uuid)
         );
     }
