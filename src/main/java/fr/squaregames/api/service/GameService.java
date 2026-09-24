@@ -9,11 +9,16 @@ import java.util.UUID;
 
 public interface GameService {
 
-    Game createGame(String gameType, Integer playerCount, Integer boardSize);
+    Game createGame(
+            String gameType,
+            Integer playerCount,
+            Integer boardSize,
+            Long userId
+    );
 
     Game getGame(UUID gameId);
 
-    Collection<Game> getAllGames();
+    Collection<Game> getAllGames(Long userId);
 
     void deleteGame(UUID gameId);
 
@@ -24,7 +29,8 @@ public interface GameService {
 
     Game playMove(
             UUID gameId,
-            MoveParams moveParams
+            MoveParams moveParams,
+            Long userId
     );
 
 }

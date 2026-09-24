@@ -25,6 +25,9 @@ public class GamePlayerEntity {
     @Column(name = "player_id")
     public UUID playerId;
 
+    @Column(name = "user_id")
+    public Long userId;
+
     @ManyToOne
     @JoinColumn(
             name = "game_id",

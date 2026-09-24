@@ -3,10 +3,21 @@ package fr.squaregames.api.plugin;
 import fr.le_campus_numerique.square_games.engine.Game;
 
 import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 public interface GamePlugin {
     String getName(Locale locale);
+
     Game createDefaultGame();
+
     Game createGame(int playerCount, int boardSize);
+
+    Game createGame(
+            int playerCount,
+            int boardSize,
+            Set<UUID> playerIds
+    );
+
     String getId();
 }

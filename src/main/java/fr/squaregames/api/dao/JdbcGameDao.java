@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,6 +52,26 @@ public class JdbcGameDao implements GameDao {
     }
 
     @Override
+    public Stream<Game> findAllByUserId(Long userId) {
+
+        String sql = """
+                SELECT DISTINCT game_id
+                FROM game_players
+                WHERE user_id = :userId
+                """;
+
+        return jdbcTemplate.queryForList(
+                        sql,
+                        Map.of("userId", userId),
+                        UUID.class
+                )
+                .stream()
+                .map(UUID::toString)
+                .map(this::findById)
+                .flatMap(Optional::stream);
+    }
+
+    @Override
     public Optional<Game> findById(String gameId) {
 
         UUID uuid = UUID.fromString(gameId);
@@ -58,10 +79,6 @@ public class JdbcGameDao implements GameDao {
         Map<String, Object> params = Map.of(
                 "gameId", uuid
         );
-
-        // ---------------------------------------------------------
-        // 1. Récupérer les informations générales de la partie
-        // ---------------------------------------------------------
 
         String gameSql = """
                 SELECT id, factory_id, status, current_player_id, board_size
@@ -94,10 +111,6 @@ public class JdbcGameDao implements GameDao {
                     int boardSize =
                             resultSet.getInt("board_size");
 
-                    // ---------------------------------------------------------
-                    // 2. Récupérer les joueurs
-                    // ---------------------------------------------------------
-
                     String playersSql = """
                             SELECT player_id, player_order
                             FROM game_players
@@ -113,10 +126,6 @@ public class JdbcGameDao implements GameDao {
                                             playersResultSet.getString("player_id")
                                     )
                     );
-
-                    // ---------------------------------------------------------
-                    // 3. Récupérer les tokens
-                    // ---------------------------------------------------------
 
                     String tokensSql = """
                             SELECT player_id, token_name, position_x, position_y, removed
@@ -157,7 +166,6 @@ public class JdbcGameDao implements GameDao {
                                 boolean removed =
                                         tokensResultSet.getBoolean("removed");
 
-                                // Token placé sur le plateau
                                 if (!removed
                                         && positionX != null
                                         && positionY != null) {
@@ -170,10 +178,7 @@ public class JdbcGameDao implements GameDao {
                                                     positionY
                                             )
                                     );
-                                }
-
-                                // Token retiré
-                                else if (removed) {
+                                } else if (removed) {
 
                                     removedTokens.add(
                                             new TokenPosition<>(
@@ -184,20 +189,8 @@ public class JdbcGameDao implements GameDao {
                                             )
                                     );
                                 }
-
-                                // position_x = NULL
-                                // position_y = NULL
-                                // removed = false
-                                //
-                                // => token encore disponible
-                                // => rien à faire
                             }
                     );
-
-
-                    // ---------------------------------------------------------
-                    // 5. Récupérer la GameFactory
-                    // ---------------------------------------------------------
 
                     GameFactory factory = factories.get(factoryId);
 
@@ -206,10 +199,6 @@ public class JdbcGameDao implements GameDao {
                                 "Unknown game factory: " + factoryId
                         );
                     }
-
-                    // ---------------------------------------------------------
-                    // 6. Reconstruction du Game
-                    // ---------------------------------------------------------
 
                     try {
                         Game game = factory.createGameWithIds(
@@ -232,13 +221,41 @@ public class JdbcGameDao implements GameDao {
         );
     }
 
+    @Override
+    public Optional<UUID> findPlayerIdByUserId(
+            String gameId,
+            Long userId
+    ) {
+
+        String sql = """
+                SELECT player_id
+                FROM game_players
+                WHERE game_id = :gameId
+                  AND user_id = :userId
+                """;
+
+        List<UUID> playerIds = jdbcTemplate.query(
+                sql,
+                Map.of(
+                        "gameId", UUID.fromString(gameId),
+                        "userId", userId
+                ),
+                (resultSet, rowNum) ->
+                        resultSet.getObject(
+                                "player_id",
+                                UUID.class
+                        )
+        );
+
+        return playerIds.stream().findFirst();
+    }
+
     @Transactional
     @Override
-    public Game upsert(Game game) {
-
-        // ---------------------------------------------------------
-        // 1. Sauvegarder les informations générales de la partie
-        // ---------------------------------------------------------
+    public Game upsert(
+            Game game,
+            Map<UUID, Long> playerUserIds
+    ) {
 
         String gameSql = """
                 INSERT INTO games (
@@ -275,10 +292,33 @@ public class JdbcGameDao implements GameDao {
 
         jdbcTemplate.update(gameSql, gameParams);
 
+        Map<UUID, Long> existingUserIds = new HashMap<>();
 
-        // ---------------------------------------------------------
-        // 2. Supprimer les anciens joueurs
-        // ---------------------------------------------------------
+        String existingPlayersSql = """
+        SELECT player_id, user_id
+        FROM game_players
+        WHERE game_id = :gameId
+        """;
+
+        jdbcTemplate.query(
+                existingPlayersSql,
+                Map.of("gameId", game.getId()),
+                resultSet -> {
+                    UUID playerId = resultSet.getObject(
+                            "player_id",
+                            UUID.class
+                    );
+
+                    Long userId = resultSet.getObject(
+                            "user_id",
+                            Long.class
+                    );
+
+                    if (userId != null) {
+                        existingUserIds.put(playerId, userId);
+                    }
+                }
+        );
 
         String deletePlayersSql = """
                 DELETE FROM game_players
@@ -290,21 +330,18 @@ public class JdbcGameDao implements GameDao {
                 Map.of("gameId", game.getId())
         );
 
-
-        // ---------------------------------------------------------
-        // 3. Réinsérer les joueurs actuels
-        // ---------------------------------------------------------
-
         String playerSql = """
                 INSERT INTO game_players (
                     game_id,
                     player_id,
-                    player_order
+                    player_order,
+                    user_id
                 )
                 VALUES (
                     :gameId,
                     :playerId,
-                    :playerOrder
+                    :playerOrder,
+                    :userId
                 )
                 """;
 
@@ -312,18 +349,26 @@ public class JdbcGameDao implements GameDao {
 
         for (UUID playerId : game.getPlayerIds()) {
 
-            Map<String, Object> playerParams = Map.of(
-                    "gameId", game.getId(),
-                    "playerId", playerId,
-                    "playerOrder", playerOrder
-            );
+            Long userId = playerUserIds.get(playerId);
 
-            jdbcTemplate.update(playerSql, playerParams);
+            if (userId == null) {
+                userId = existingUserIds.get(playerId);
+            }
+
+            MapSqlParameterSource playerParams =
+                    new MapSqlParameterSource()
+                            .addValue("gameId", game.getId())
+                            .addValue("playerId", playerId)
+                            .addValue("playerOrder", playerOrder)
+                            .addValue("userId", userId);
+
+            jdbcTemplate.update(
+                    playerSql,
+                    playerParams
+            );
 
             playerOrder++;
         }
-
-
         // ---------------------------------------------------------
         // 4. Supprimer les anciens tokens
         // ---------------------------------------------------------
@@ -337,7 +382,6 @@ public class JdbcGameDao implements GameDao {
                 deleteTokensSql,
                 Map.of("gameId", game.getId())
         );
-
 
         // ---------------------------------------------------------
         // 5. Réinsérer les tokens actuels
@@ -362,11 +406,7 @@ public class JdbcGameDao implements GameDao {
                 )
                 """;
 
-
-        // ---------------------------------------------------------
-        // 5.1 Tokens présents sur le plateau
-        // ---------------------------------------------------------
-
+        // Tokens présents sur le plateau
         for (Map.Entry<CellPosition, Token> entry :
                 game.getBoard().entrySet()) {
 
@@ -388,11 +428,7 @@ public class JdbcGameDao implements GameDao {
             jdbcTemplate.update(tokenSql, tokenParams);
         }
 
-
-        // ---------------------------------------------------------
-        // 5.2 Tokens encore disponibles
-        // ---------------------------------------------------------
-
+        // Tokens encore disponibles
         for (Token token : game.getRemainingTokens()) {
 
             MapSqlParameterSource tokenParams =
@@ -410,11 +446,7 @@ public class JdbcGameDao implements GameDao {
             jdbcTemplate.update(tokenSql, tokenParams);
         }
 
-
-        // ---------------------------------------------------------
-        // 5.3 Tokens retirés
-        // ---------------------------------------------------------
-
+        // Tokens retirés
         for (Token token : game.getRemovedTokens()) {
 
             MapSqlParameterSource tokenParams =
@@ -431,11 +463,6 @@ public class JdbcGameDao implements GameDao {
 
             jdbcTemplate.update(tokenSql, tokenParams);
         }
-
-
-        // ---------------------------------------------------------
-        // 6. Retourner la partie
-        // ---------------------------------------------------------
 
         return game;
     }

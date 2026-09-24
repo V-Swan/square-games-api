@@ -10,11 +10,7 @@ import fr.squaregames.api.dao.entity.GameTokenEntity;
 
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Stream;
 
 @Repository
@@ -39,15 +35,45 @@ public class JpaGameDao implements GameDao {
     }
 
     @Override
+    public Stream<Game> findAllByUserId(Long userId) {
+        return gameEntityRepository.findAll()
+                .stream()
+                .filter(game -> game.players.stream()
+                        .anyMatch(player -> userId.equals(player.userId)))
+                .map(this::toGame);
+    }
+
+    @Override
     public Optional<Game> findById(String gameId) {
         return gameEntityRepository.findById(UUID.fromString(gameId))
                 .map(this::toGame);
     }
 
     @Override
-    public Game upsert(Game game) {
-        GameEntity entity = toEntity(game);
+    public Optional<UUID> findPlayerIdByUserId(
+            String gameId,
+            Long userId
+    ) {
+        return gameEntityRepository.findById(UUID.fromString(gameId))
+                .flatMap(game -> game.players.stream()
+                        .filter(player -> userId.equals(player.userId))
+                        .map(player -> player.playerId)
+                        .findFirst());
+    }
+
+    @Override
+    public Game upsert(
+            Game game,
+            Map<UUID, Long> playerUserIds
+    ) {
+        GameEntity entity = gameEntityRepository
+                .findById(game.getId())
+                .orElseGet(GameEntity::new);
+
+        toEntity(game, playerUserIds, entity);
+
         gameEntityRepository.save(entity);
+
         return game;
     }
 
@@ -100,7 +126,8 @@ public class JpaGameDao implements GameDao {
                 .findFirst()
                 .orElseThrow(() ->
                         new IllegalStateException(
-                                "Factory inconnue : " + entity.factoryId
+                                "Factory inconnue : "
+                                        + entity.factoryId
                         )
                 );
 
@@ -114,32 +141,61 @@ public class JpaGameDao implements GameDao {
             );
         } catch (Exception e) {
             throw new IllegalStateException(
-                    "Impossible de reconstruire la partie " + entity.id,
+                    "Impossible de reconstruire la partie "
+                            + entity.id,
                     e
             );
         }
     }
 
-    private GameEntity toEntity(Game game) {
+    private void toEntity(
+            Game game,
+            Map<UUID, Long> playerUserIds,
+            GameEntity entity
+    ) {
 
-        GameEntity entity = new GameEntity();
+        Map<UUID, Long> existingUserIds = new HashMap<>();
+
+        if (entity.players != null) {
+            for (GamePlayerEntity player : entity.players) {
+                if (player.userId != null) {
+                    existingUserIds.put(
+                            player.playerId,
+                            player.userId
+                    );
+                }
+            }
+        }
 
         entity.id = game.getId();
         entity.factoryId = game.getFactoryId();
         entity.boardSize = game.getBoardSize();
 
-        entity.players = new ArrayList<>();
+        if (entity.players == null) {
+            entity.players = new ArrayList<>();
+        } else {
+            entity.players.clear();
+        }
 
         int playerOrder = 0;
 
         for (UUID playerId : game.getPlayerIds()) {
 
-            GamePlayerEntity playerEntity = new GamePlayerEntity();
+            GamePlayerEntity playerEntity =
+                    new GamePlayerEntity();
 
             playerEntity.gameId = entity.id;
             playerEntity.playerId = playerId;
             playerEntity.playerOrder = playerOrder++;
             playerEntity.game = entity;
+
+            Long userId = playerUserIds.get(playerId);
+
+            if (userId == null) {
+                userId = existingUserIds.get(playerId);
+            }
+
+            playerEntity.userId = userId;
 
             entity.players.add(playerEntity);
         }
@@ -148,11 +204,16 @@ public class JpaGameDao implements GameDao {
 
         entity.currentPlayerId = game.getCurrentPlayerId();
 
-        entity.tokens = new ArrayList<>();
+        if (entity.tokens == null) {
+            entity.tokens = new ArrayList<>();
+        } else {
+            entity.tokens.clear();
+        }
 
         for (Token token : game.getBoard().values()) {
 
-            GameTokenEntity tokenEntity = new GameTokenEntity();
+            GameTokenEntity tokenEntity =
+                    new GameTokenEntity();
 
             tokenEntity.game = entity;
 
@@ -172,7 +233,8 @@ public class JpaGameDao implements GameDao {
 
         for (Token token : game.getRemovedTokens()) {
 
-            GameTokenEntity tokenEntity = new GameTokenEntity();
+            GameTokenEntity tokenEntity =
+                    new GameTokenEntity();
 
             tokenEntity.game = entity;
 
@@ -189,7 +251,8 @@ public class JpaGameDao implements GameDao {
 
         for (Token token : game.getRemainingTokens()) {
 
-            GameTokenEntity tokenEntity = new GameTokenEntity();
+            GameTokenEntity tokenEntity =
+                    new GameTokenEntity();
 
             tokenEntity.game = entity;
 
@@ -203,7 +266,5 @@ public class JpaGameDao implements GameDao {
 
             entity.tokens.add(tokenEntity);
         }
-
-        return entity;
     }
 }

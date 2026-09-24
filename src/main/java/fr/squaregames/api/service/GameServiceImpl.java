@@ -4,15 +4,15 @@ import fr.le_campus_numerique.square_games.engine.CellPosition;
 import fr.le_campus_numerique.square_games.engine.Game;
 import fr.le_campus_numerique.square_games.engine.Token;
 import fr.le_campus_numerique.square_games.engine.InvalidPositionException;
+import fr.squaregames.api.UserClient;
 import fr.squaregames.api.dao.GameDao;
 import fr.squaregames.api.plugin.GamePlugin;
 import fr.squaregames.api.dto.MoveParams;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,10 +20,12 @@ public class GameServiceImpl implements GameService {
 
     private final Map<String, GamePlugin> pluginsMap;
     private final GameDao gameDao;
+    private final UserClient userClient;
 
     public GameServiceImpl(
             List<GamePlugin> plugins,
-            GameDao gameDao
+            GameDao gameDao,
+            UserClient userClient
     ) {
         this.pluginsMap = plugins.stream()
                 .collect(Collectors.toMap(
@@ -32,14 +34,23 @@ public class GameServiceImpl implements GameService {
                 ));
 
         this.gameDao = gameDao;
+        this.userClient = userClient;
     }
 
     @Override
     public Game createGame(
             String gameType,
             Integer playerCount,
-            Integer boardSize
+            Integer boardSize,
+            Long userId
     ) {
+        if (!userClient.isUserValid(userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Utilisateur inconnu."
+            );
+        }
+
         GamePlugin plugin = pluginsMap.get(gameType);
 
         if (plugin == null) {
@@ -53,10 +64,27 @@ public class GameServiceImpl implements GameService {
         if (playerCount == null || boardSize == null) {
             game = plugin.createDefaultGame();
         } else {
-            game = plugin.createGame(playerCount, boardSize);
+            Set<UUID> playerIds = new HashSet<>();
+
+            for (int i = 0; i < playerCount; i++) {
+                playerIds.add(UUID.randomUUID());
+            }
+
+            game = plugin.createGame(
+                    playerCount,
+                    boardSize,
+                    playerIds
+            );
         }
 
-        gameDao.upsert(game);
+        Map<UUID, Long> playerUserIds = new HashMap<>();
+
+        playerUserIds.put(
+                game.getCurrentPlayerId(),
+                userId
+        );
+
+        gameDao.upsert(game, playerUserIds);
 
         return game;
     }
@@ -106,8 +134,16 @@ public class GameServiceImpl implements GameService {
     @Override
     public Game playMove(
             UUID gameId,
-            MoveParams moveParams
+            MoveParams moveParams,
+            Long userId
     ) {
+        if (!userClient.isUserValid(userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Utilisateur inconnu."
+            );
+        }
+
         Game game = gameDao.findById(gameId.toString())
                 .orElse(null);
 
@@ -117,18 +153,21 @@ public class GameServiceImpl implements GameService {
             );
         }
 
-        UUID playerUuid = UUID.fromString(
-                moveParams.getPlayerUuid()
-        );
-
-        if (!game.getPlayerIds().contains(playerUuid)) {
-            throw new IllegalArgumentException(
-                    "Le joueur n'appartient pas à cette partie."
-            );
-        }
+        UUID playerUuid = gameDao
+                .findPlayerIdByUserId(
+                        gameId.toString(),
+                        userId
+                )
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.FORBIDDEN,
+                                "Le joueur n'appartient pas à cette partie."
+                        )
+                );
 
         if (!playerUuid.equals(game.getCurrentPlayerId())) {
-            throw new IllegalArgumentException(
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
                     "Ce n'est pas le tour de ce joueur."
             );
         }
@@ -183,13 +222,27 @@ public class GameServiceImpl implements GameService {
             );
         }
 
-        gameDao.upsert(game);
+        Map<UUID, Long> playerUserIds = new HashMap<>();
+
+        playerUserIds.put(
+                playerUuid,
+                userId
+        );
+
+        gameDao.upsert(game, playerUserIds);
 
         return game;
     }
     @Override
-    public Collection<Game> getAllGames() {
-        return gameDao.findAll().toList();
+    public Collection<Game> getAllGames(Long userId) {
+        if (!userClient.isUserValid(userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Utilisateur inconnu."
+            );
+        }
+
+        return gameDao.findAllByUserId(userId).toList();
     }
 
     @Override
