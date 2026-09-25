@@ -4,6 +4,7 @@ import fr.le_campus_numerique.square_games.engine.CellPosition;
 import fr.le_campus_numerique.square_games.engine.Game;
 import fr.squaregames.api.dto.GameCreationParams;
 import fr.squaregames.api.dto.MoveParams;
+import fr.squaregames.api.security.JwtUserPrincipal;
 import fr.squaregames.api.service.GameService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
@@ -30,7 +32,7 @@ public class GameController {
 
     @Operation(
             summary = "Créer une partie",
-            description = "Crée une nouvelle partie pour l'utilisateur identifié par X-UserId."
+            description = "Crée une nouvelle partie pour l'utilisateur authentifié."
     )
     @ApiResponses({
             @ApiResponse(
@@ -38,19 +40,19 @@ public class GameController {
                     description = "Partie créée avec succès"
             ),
             @ApiResponse(
-                    responseCode = "403",
-                    description = "Utilisateur inconnu"
+                    responseCode = "401",
+                    description = "Utilisateur non authentifié"
             )
     })
     @PostMapping
     public ResponseEntity<Game> createGame(
-            @Parameter(
-                    description = "Identifiant de l'utilisateur qui crée la partie",
-                    required = true
-            )
-            @RequestHeader("X-UserId") Long userId,
-
+            Authentication authentication,
             @RequestBody GameCreationParams params) {
+
+        JwtUserPrincipal principal =
+                (JwtUserPrincipal) authentication.getPrincipal();
+
+        Long userId = principal.getUserId();
 
         Game game = gameService.createGame(
                 params.getGameType(),
@@ -66,7 +68,7 @@ public class GameController {
 
     @Operation(
             summary = "Lister les parties de l'utilisateur",
-            description = "Retourne uniquement les parties auxquelles l'utilisateur participe."
+            description = "Retourne uniquement les parties auxquelles l'utilisateur authentifié participe."
     )
     @ApiResponses({
             @ApiResponse(
@@ -74,19 +76,21 @@ public class GameController {
                     description = "Liste des parties récupérée avec succès"
             ),
             @ApiResponse(
-                    responseCode = "403",
-                    description = "Utilisateur inconnu"
+                    responseCode = "401",
+                    description = "Utilisateur non authentifié"
             )
     })
     @GetMapping("/all")
     public ResponseEntity<Collection<Game>> getAllGames(
-            @Parameter(
-                    description = "Identifiant de l'utilisateur",
-                    required = true
-            )
-            @RequestHeader("X-UserId") Long userId) {
+            Authentication authentication) {
 
-        Collection<Game> games = gameService.getAllGames(userId);
+        JwtUserPrincipal principal =
+                (JwtUserPrincipal) authentication.getPrincipal();
+
+        Long userId = principal.getUserId();
+
+        Collection<Game> games =
+                gameService.getAllGames(userId);
 
         return ResponseEntity.ok(games);
     }
@@ -151,14 +155,17 @@ public class GameController {
             @PathVariable String tokenName) {
 
         Collection<CellPosition> possibleMoves =
-                gameService.getPossibleMoves(gameId, tokenName);
+                gameService.getPossibleMoves(
+                        gameId,
+                        tokenName
+                );
 
         return ResponseEntity.ok(possibleMoves);
     }
 
     @Operation(
             summary = "Jouer un coup",
-            description = "Effectue un déplacement si l'utilisateur est autorisé à jouer."
+            description = "Effectue un déplacement pour l'utilisateur authentifié."
     )
     @ApiResponses({
             @ApiResponse(
@@ -166,8 +173,12 @@ public class GameController {
                     description = "Coup joué avec succès"
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "Utilisateur non authentifié"
+            ),
+            @ApiResponse(
                     responseCode = "403",
-                    description = "Utilisateur inconnu, joueur absent de la partie ou ce n'est pas son tour"
+                    description = "Utilisateur absent de la partie ou ce n'est pas son tour"
             ),
             @ApiResponse(
                     responseCode = "404",
@@ -182,13 +193,14 @@ public class GameController {
             )
             @PathVariable UUID gameId,
 
-            @Parameter(
-                    description = "Identifiant de l'utilisateur qui joue",
-                    required = true
-            )
-            @RequestHeader("X-UserId") Long userId,
+            Authentication authentication,
 
             @RequestBody MoveParams moveParams) {
+
+        JwtUserPrincipal principal =
+                (JwtUserPrincipal) authentication.getPrincipal();
+
+        Long userId = principal.getUserId();
 
         Game game = gameService.playMove(
                 gameId,
@@ -207,6 +219,10 @@ public class GameController {
             @ApiResponse(
                     responseCode = "204",
                     description = "Partie supprimée avec succès"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Utilisateur non authentifié"
             ),
             @ApiResponse(
                     responseCode = "404",

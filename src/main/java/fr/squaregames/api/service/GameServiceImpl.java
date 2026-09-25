@@ -2,17 +2,23 @@ package fr.squaregames.api.service;
 
 import fr.le_campus_numerique.square_games.engine.CellPosition;
 import fr.le_campus_numerique.square_games.engine.Game;
-import fr.le_campus_numerique.square_games.engine.Token;
 import fr.le_campus_numerique.square_games.engine.InvalidPositionException;
-import fr.squaregames.api.UserClient;
+import fr.le_campus_numerique.square_games.engine.Token;
 import fr.squaregames.api.dao.GameDao;
-import fr.squaregames.api.plugin.GamePlugin;
 import fr.squaregames.api.dto.MoveParams;
+import fr.squaregames.api.plugin.GamePlugin;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,12 +26,10 @@ public class GameServiceImpl implements GameService {
 
     private final Map<String, GamePlugin> pluginsMap;
     private final GameDao gameDao;
-    private final UserClient userClient;
 
     public GameServiceImpl(
             List<GamePlugin> plugins,
-            GameDao gameDao,
-            UserClient userClient
+            GameDao gameDao
     ) {
         this.pluginsMap = plugins.stream()
                 .collect(Collectors.toMap(
@@ -34,7 +38,6 @@ public class GameServiceImpl implements GameService {
                 ));
 
         this.gameDao = gameDao;
-        this.userClient = userClient;
     }
 
     @Override
@@ -44,13 +47,6 @@ public class GameServiceImpl implements GameService {
             Integer boardSize,
             Long userId
     ) {
-        if (!userClient.isUserValid(userId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Utilisateur inconnu."
-            );
-        }
-
         GamePlugin plugin = pluginsMap.get(gameType);
 
         if (plugin == null) {
@@ -137,13 +133,6 @@ public class GameServiceImpl implements GameService {
             MoveParams moveParams,
             Long userId
     ) {
-        if (!userClient.isUserValid(userId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Utilisateur inconnu."
-            );
-        }
-
         Game game = gameDao.findById(gameId.toString())
                 .orElse(null);
 
@@ -233,15 +222,9 @@ public class GameServiceImpl implements GameService {
 
         return game;
     }
+
     @Override
     public Collection<Game> getAllGames(Long userId) {
-        if (!userClient.isUserValid(userId)) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Utilisateur inconnu."
-            );
-        }
-
         return gameDao.findAllByUserId(userId).toList();
     }
 
